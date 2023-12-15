@@ -89,3 +89,18 @@ int main()
          }
      }
 }
+
+void Printbytemaps(EXT_BYTE_MAPS *ext_bytemaps) {
+   // This is to print block bytemap
+    printf("Block bytemap:\n");
+    for (int i = 0; i < MAX_BLOQUES_PARTICION; ++i) {
+        printf("%d ", ext_bytemaps->bmap_bloques[i]);
+    }
+    // To print the inode bytemap
+    printf("\nInode bytemap:\n");
+    for (int i = 0; i < MAX_INODOS; ++i) {
+        printf("%d ", ext_bytemaps->bmap_inodos[i]);
+    }
+    // new line
+    printf("\n");
+}
