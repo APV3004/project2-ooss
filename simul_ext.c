@@ -104,3 +104,15 @@ void Printbytemaps(EXT_BYTE_MAPS *ext_bytemaps) {
     // new line
     printf("\n");
 }
+
+int ComprobarComando(char *strcomando, char *orden, char *argumento1, char *argumento2) {
+    // It parses the command into its components
+    int result = sscanf(strcomando, "%s %s %s", orden, argumento1, argumento2);
+
+    if (result == EOF || result == 0) {
+        // The command found is not valid
+        return -1;
+    }
+
+    return 0;
+}
