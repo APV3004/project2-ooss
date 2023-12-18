@@ -116,3 +116,15 @@ int ComprobarComando(char *strcomando, char *orden, char *argumento1, char *argu
 
     return 0;
 }
+
+
+int BuscaFich(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos, char *nombre) {
+    // it looks for the file in the directory
+    for (int i = 0; i < MAX_FICHEROS; ++i) {
+        if (strcmp(directorio[i].dir_nfich, nombre) == 0) {
+            return i; // if it´s found returns the index
+        }
+    }
+
+    return -1; // and if it´s not found 
+}
