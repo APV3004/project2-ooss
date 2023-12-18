@@ -147,3 +147,20 @@ int Renombrar(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos, char *nombrea
 
     return -1; // if it´s not found
 }
+
+int Imprimir(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos, EXT_DATOS *memdatos, char *nombre) {
+    // Print the contents of a file
+    int index = BuscaFich(directorio, inodos, nombre);
+
+    if (index != -1) {
+        int inodeNumber = directorio[index].dir_inodo;
+        for (int i = 0; i < MAX_NUMS_BLOQUE_INODO; ++i) {
+            int blockNumber = inodos->bmap_bloques[i];
+            printf("%s", memdatos->datos[blockNumber]);
+        }
+
+        return 0; // This is that success
+    }
+
+    return -1; // File not found
+}
