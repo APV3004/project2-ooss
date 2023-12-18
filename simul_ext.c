@@ -135,3 +135,15 @@ void Directorio(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos) {
         printf("Name: %s, Inode: %d\n", directorio[i].dir_nfich, directorio[i].dir_inodo);
     }
 }
+
+
+int Renombrar(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos, char *nombreantiguo, char *nombrenuevo) {
+    // this is to rename the file in the directory
+    int index = BuscaFich(directorio, inodos, nombreantiguo);
+    if (index != -1) {
+        strcpy(directorio[index].dir_nfich, nombrenuevo);
+        return 0; // if it´s found
+    }
+
+    return -1; // if it´s not found
+}
