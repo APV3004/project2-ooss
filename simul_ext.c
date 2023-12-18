@@ -128,3 +128,10 @@ int BuscaFich(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos, char *nombre)
 
     return -1; // and if it´s not found 
 }
+
+void Directorio(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos) {
+    // Display the directory contents
+    for (int i = 0; i < MAX_FICHEROS; ++i) {
+        printf("Name: %s, Inode: %d\n", directorio[i].dir_nfich, directorio[i].dir_inodo);
+    }
+}
