@@ -164,3 +164,37 @@ int Imprimir(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos, EXT_DATOS *mem
 
     return -1; // File not found
 }
+
+
+int Borrar(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos, EXT_BYTE_MAPS *ext_bytemaps, EXT_SIMPLE_SUPERBLOCK *ext_superblock, char *nombre, FILE *fich) {
+    // Dlete a file
+    int index = BuscaFich(directorio, inodos, nombre);
+
+    if (index != -1) {
+        int inodeNumber = directorio[index].dir_inodo;
+
+        // Mark the inode and free blocks in the bytemaps
+        ext_bytemaps->bmap_inodos[inodeNumber] = 0;
+
+        for (int i = 0; i < MAX_NUMS_BLOQUE_INODO; ++i) {
+            int blockNumber = inodos->bmap_bloques[i];
+            ext_bytemaps->bmap_bloques[blockNumber] = 0;
+        }
+
+        // Put size 0 in the freed inode
+        inodos->size_fichero = 0;
+
+        // Mark the 7 block pointers of that inode with the value 0xFFFF
+        for (int i = 0; i < MAX_NUMS_BLOQUE_INODO; ++i) {
+            inodos->bmap_bloques[i] = 0xFFFF;
+        }
+
+        // Delete the directory entry
+        strcpy(directorio[index].dir_nfich, "");
+        directorio[index].dir_inodo = 0xFFFF;
+
+        return 0; // Success
+    }
+
+    return -1; // File not found
+}
