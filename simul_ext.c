@@ -280,3 +280,9 @@ void GrabarByteMaps(EXT_BYTE_MAPS *ext_bytemaps, FILE *fich) {
     fseek(fich, SIZE_BLOQUE, SEEK_SET);
     fwrite(ext_bytemaps, SIZE_BLOQUE, 1, fich);
 }
+
+void GrabarSuperBloque(EXT_SIMPLE_SUPERBLOCK *ext_superblock, FILE *fich) {
+    // Write the superblock to the file
+    fseek(fich, 0, SEEK_SET);
+    fwrite(ext_superblock, SIZE_BLOQUE, 1, fich);
+}
