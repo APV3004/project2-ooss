@@ -243,3 +243,97 @@ int Borrar(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos, EXT_BYTE_MAPS *e
 
     return -1; // File not found
 }
+
+
+int Copiar(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos, EXT_BYTE_MAPS *ext_bytemaps, EXT_SIMPLE_SUPERBLOCK *ext_superblock, EXT_DATOS *memdatos, char *nombreorigen, char *nombredestino, FILE *fich) {
+    int indexOrigen = BuscaFich(directorio, inodos, nombreorigen);
+    int indexDestino = BuscaFich(directorio, inodos, nombredestino);
+
+    if (indexOrigen != -1 && indexDestino == -1) {
+        // Find the first free inode for the file
+        int freeInode = -1;
+        for (int i = 2; i < MAX_INODOS; ++i) {
+            if (ext_bytemaps->bmap_inodos[i] == 0) {
+                freeInode = i;
+                break;
+            }
+        }
+
+        if (freeInode != -1) {
+            // Copy the size and mark the inode as busy
+            int inodeNumberOrigen = directorio[indexOrigen].dir_inodo;
+            int inodeNumberDestino = freeInode;
+            inodos[inodeNumberDestino].size_fichero = inodos[inodeNumberOrigen].size_fichero;
+            ext_bytemaps->bmap_inodos[inodeNumberDestino] = 1;
+
+            // Loop over the list of block numbers 
+            for (int i = 0; i < MAX_NUMS_BLOQUE_INODO; ++i) {
+                int blockNumberOrigen = inodos[inodeNumberOrigen].i_nbloque[i];
+
+                if (blockNumberOrigen != 0xFFFF) {
+                    // Find the first free block in the bytemap
+                    int freeBlock = -1;
+                    for (int j = 4; j < MAX_BLOQUES_PARTICION; ++j) {
+                        if (ext_bytemaps->bmap_bloques[j] == 0) {
+                            freeBlock = j;
+                            break;
+                        }
+                    }
+
+                    if (freeBlock != -1) {
+                        // new block number to the target inode
+                        inodos[inodeNumberDestino].i_nbloque[i] = freeBlock;
+                        ext_bytemaps->bmap_bloques[freeBlock] = 1;
+
+                        // Copy the data content
+                        memcpy(memdatos->datos[freeBlock], memdatos->datos[blockNumberOrigen], SIZE_BLOQUE);
+                    } else {
+                        // If there is not a free block
+                        return -2;
+                    }
+                }
+            }
+
+            // Create an entry in the first available vacancy in the directory
+            strcpy(directorio[indexOrigen].dir_nfich, nombredestino);
+            directorio[indexOrigen].dir_inodo = inodeNumberDestino;
+
+            return 0; // if it´s correct
+        } else {
+            // if it´s not correct
+            return -1;
+        }
+    }
+
+    return -3; // If the file is not found
+}
+
+void LeeSuperBloque(EXT_SIMPLE_SUPERBLOCK *psup, FILE *file) {
+    // Read the superblock from the file
+    fread(psup, SIZE_BLOQUE, 1, file);
+}
+
+void Grabarinodosydirectorio(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos, FILE *fich) {
+    // This is to write the inode list and directory to the file
+    fseek(fich, SIZE_BLOQUE * 3, SEEK_SET);
+    fwrite(inodos, SIZE_BLOQUE, 1, fich);
+    fwrite(directorio, SIZE_BLOQUE, 1, fich);
+}
+
+void GrabarByteMaps(EXT_BYTE_MAPS *ext_bytemaps, FILE *fich) {
+    // this is to write the bytemaps to the file
+    fseek(fich, SIZE_BLOQUE, SEEK_SET);
+    fwrite(ext_bytemaps, SIZE_BLOQUE, 1, fich);
+}
+
+void GrabarSuperBloque(EXT_SIMPLE_SUPERBLOCK *ext_superblock, FILE *fich) {
+    // Write the superblock to the file
+    fseek(fich, 0, SEEK_SET);
+    fwrite(ext_superblock, SIZE_BLOQUE, 1, fich);
+}
+
+void GrabarDatos(EXT_DATOS *memdatos, FILE *fich){
+    // this is to write the data of the bocks to the file
+    fseek(fich, SIZE_BLOQUE * 4, SEEK_SET);
+    fwrite(memdatos, SIZE_BLOQUE, MAX_BLOQUES_DATOS, fich);
+}
