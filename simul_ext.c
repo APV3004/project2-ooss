@@ -274,3 +274,9 @@ void Grabarinodosydirectorio(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos
     fwrite(inodos, SIZE_BLOQUE, 1, fich);
     fwrite(directorio, SIZE_BLOQUE, 1, fich);
 }
+
+void GrabarByteMaps(EXT_BYTE_MAPS *ext_bytemaps, FILE *fich) {
+    // this is to write the bytemaps to the file
+    fseek(fich, SIZE_BLOQUE, SEEK_SET);
+    fwrite(ext_bytemaps, SIZE_BLOQUE, 1, fich);
+}
