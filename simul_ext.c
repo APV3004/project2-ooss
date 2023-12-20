@@ -267,3 +267,10 @@ void LeeSuperBloque(EXT_SIMPLE_SUPERBLOCK *psup, FILE *file) {
     // Read the superblock from the file
     fread(psup, SIZE_BLOQUE, 1, file);
 }
+
+void Grabarinodosydirectorio(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos, FILE *fich) {
+    // This is to write the inode list and directory to the file
+    fseek(fich, SIZE_BLOQUE * 3, SEEK_SET);
+    fwrite(inodos, SIZE_BLOQUE, 1, fich);
+    fwrite(directorio, SIZE_BLOQUE, 1, fich);
+}
