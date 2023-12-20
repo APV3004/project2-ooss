@@ -262,3 +262,8 @@ int Copiar(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos, EXT_BYTE_MAPS *e
 
     return -3; // If the file is not found
 }
+
+void LeeSuperBloque(EXT_SIMPLE_SUPERBLOCK *psup, FILE *file) {
+    // Read the superblock from the file
+    fread(psup, SIZE_BLOQUE, 1, file);
+}
