@@ -286,3 +286,9 @@ void GrabarSuperBloque(EXT_SIMPLE_SUPERBLOCK *ext_superblock, FILE *fich) {
     fseek(fich, 0, SEEK_SET);
     fwrite(ext_superblock, SIZE_BLOQUE, 1, fich);
 }
+
+void GrabarDatos(EXT_DATOS *memdatos, FILE *fich){
+    // this is to write the data of the bocks to the file
+    fseek(fich, SIZE_BLOQUE * 4, SEEK_SET);
+    fwrite(memdatos, SIZE_BLOQUE, MAX_BLOQUES_DATOS, fich);
+}
