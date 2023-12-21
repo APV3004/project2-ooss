@@ -175,9 +175,24 @@ int BuscaFich(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos, char *nombre)
 }
 
 void Directorio(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos) {
-    // Display the directory contents
+    printf("Directory listing:\n");
+    printf("%-20s %-10s %-10s %-10s\n", "File Name", "Inode", "Size", "Blocks");
+
     for (int i = 0; i < MAX_FICHEROS; ++i) {
-        printf("Name: %s, Inode: %d\n", directorio[i].dir_nfich, inodos->blq_inodos[directorio[i].dir_inodo].size_fichero, directorio[i].dir_inodo);
+        if (directorio[i].dir_nfich[0] != '\0' && directorio[i].dir_inodo != 0xFFFF) {
+            int inodeNumber = directorio[i].dir_inodo;
+            printf("%-20s %-10d %-10u ", directorio[i].dir_nfich, inodeNumber, inodos[inodeNumber].blq_inodos);
+
+            printf("Blocks: ");
+            for (int j = 0; j < MAX_NUMS_BLOQUE_INODO; ++j) {
+                int blockNumber = inodos[inodeNumber].blq_relleno[j];
+                if (blockNumber != 0xFFFF) {
+                    printf("%d ", blockNumber);
+                }
+            }
+
+            printf("\n");
+        }
     }
 }
 
