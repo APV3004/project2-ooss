@@ -7,7 +7,7 @@
 
 void Printbytemaps(EXT_BYTE_MAPS *ext_bytemaps);
 int ComprobarComando(char *strcomando, char *orden, char *argumento1, char *argumento2);
-void LeeSuperBloque(EXT_SIMPLE_SUPERBLOCK *psup);
+void LeeSuperBloque(EXT_SIMPLE_SUPERBLOCK *psup, FILE *file);
 int BuscaFich(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos, 
               char *nombre);
 void Directorio(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos);
@@ -45,7 +45,7 @@ int main() {
     FILE *fent;
 
     // We open the file for reading and writing
-    fent = fopen("particion.bin", "r+b");
+    fent = fopen("C:/Users/adrip/OneDrive - U-tad/SSOO/project2-ooss/particion.bin", "r+b");
     if (fent == NULL) {
         perror("Error opening the file");
         return 1;
@@ -76,7 +76,7 @@ int main() {
 
         if (strcmp(orden, "info") == 0) {
             // Command: info
-            LeeSuperBloque(&ext_superblock);
+            LeeSuperBloque(&ext_superblock, fent);
         }
         else if (strcmp(orden, "bytemaps") == 0) {
             Printbytemaps(&ext_bytemaps);
@@ -263,49 +263,45 @@ int Copiar(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos, EXT_BYTE_MAPS *e
             // Copy the size and mark the inode as busy
             int inodeNumberOrigen = directorio[indexOrigen].dir_inodo;
             int inodeNumberDestino = freeInode;
-            inodos[inodeNumberDestino].size_fichero = inodos[inodeNumberOrigen].size_fichero;
+            memcpy(inodos[inodeNumberDestino].blq_relleno, inodos[inodeNumberOrigen].blq_relleno, sizeof(inodos[inodeNumberOrigen].blq_relleno));
             ext_bytemaps->bmap_inodos[inodeNumberDestino] = 1;
 
-            // Loop over the list of block numbers 
+            // Allocate and copy the data blocks
             for (int i = 0; i < MAX_NUMS_BLOQUE_INODO; ++i) {
-                int blockNumberOrigen = inodos[inodeNumberOrigen].i_nbloque[i];
-
-                if (blockNumberOrigen != 0xFFFF) {
-                    // Find the first free block in the bytemap
+                int blockNumber = inodos[inodeNumberOrigen].blq_relleno[i];
+                if (blockNumber != 0xFFFF) {
+                    // Find a free block
                     int freeBlock = -1;
-                    for (int j = 4; j < MAX_BLOQUES_PARTICION; ++j) {
+                    for (int j = 0; j < MAX_BLOQUES_PARTICION; ++j) {
                         if (ext_bytemaps->bmap_bloques[j] == 0) {
                             freeBlock = j;
                             break;
                         }
                     }
-
-                    if (freeBlock != -1) {
-                        // new block number to the target inode
-                        inodos[inodeNumberDestino].i_nbloque[i] = freeBlock;
-                        ext_bytemaps->bmap_bloques[freeBlock] = 1;
-
-                        // Copy the data content
-                        memcpy(memdatos->datos[freeBlock], memdatos->datos[blockNumberOrigen], SIZE_BLOQUE);
-                    } else {
-                        // If there is not a free block
+                    if (freeBlock == -1) {
+                        // No free blocks available
                         return -2;
                     }
+                    // Copy the block data
+                    memcpy(&memdatos[freeBlock], &memdatos[blockNumber], SIZE_BLOQUE);
+                    inodos[inodeNumberDestino].blq_relleno[i] = freeBlock;
+                    ext_bytemaps->bmap_bloques[freeBlock] = 1;
                 }
             }
 
-            // Create an entry in the first available vacancy in the directory
-            strcpy(directorio[indexOrigen].dir_nfich, nombredestino);
-            directorio[indexOrigen].dir_inodo = inodeNumberDestino;
+            // Create the new directory entry
+            strcpy(directorio[freeInode].dir_nfich, nombredestino);
+            directorio[freeInode].dir_inodo = inodeNumberDestino;
 
-            return 0; // if it´s correct
+            return 0; // Success
         } else {
-            // if it´s not correct
+            // No free inodes available
             return -1;
         }
+    } else {
+        // Source file not found or destination file already exists
+        return -3;
     }
-
-    return -3; // If the file is not found
 }
 
 void LeeSuperBloque(EXT_SIMPLE_SUPERBLOCK *psup, FILE *file) {
