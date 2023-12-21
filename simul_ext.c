@@ -177,7 +177,7 @@ int BuscaFich(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos, char *nombre)
 void Directorio(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos) {
     // Display the directory contents
     for (int i = 0; i < MAX_FICHEROS; ++i) {
-        printf("Name: %s, Inode: %d\n", directorio[i].dir_nfich, directorio[i].dir_inodo);
+        printf("Name: %s, Inode: %d\n", directorio[i].dir_nfich, inodos->blq_inodos[directorio[i].dir_inodo].size_fichero, directorio[i].dir_inodo);
     }
 }
 
@@ -306,7 +306,22 @@ int Copiar(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos, EXT_BYTE_MAPS *e
 
 void LeeSuperBloque(EXT_SIMPLE_SUPERBLOCK *psup, FILE *file) {
     // Read the superblock from the file
+    fseek(fent, 0, SEEK_SET);
     fread(psup, SIZE_BLOQUE, 1, file);
+
+     // Check if the superblock is read successfully
+    if (psup->s_blocks_count > 0) {
+        printf("Superblock information:\n");
+        printf("Inodes count: %u\n", psup->s_inodes_count);
+        printf("Blocks count: %u\n", psup->s_blocks_count);
+        printf("Free blocks count: %u\n", psup->s_free_blocks_count);
+        printf("Free inodes count: %u\n", psup->s_free_inodes_count);
+        printf("First data block: %u\n", psup->s_first_data_block);
+        printf("Block size: %u bytes\n", psup->s_block_size);
+        printf("\n");
+    } else {
+        printf("Error reading the superblock.\n");
+    }
 }
 
 void Grabarinodosydirectorio(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos, FILE *fich) {
