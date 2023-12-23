@@ -184,7 +184,7 @@ void Directorio(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos) {
             printf("%-20s %-10d %-10u ", directorio[i].dir_nfich, inodeNumber, inodos[inodeNumber].blq_inodos);
 
             printf("Blocks: ");
-            for (int j = 0; j < MAX_NUMS_BLOQUE_INODO; ++j) {
+            for (int j = 0; j < MAX_NUMS_BLOQUE_INODO; j++) {
                 int blockNumber = inodos[inodeNumber].blq_relleno[j];
                 if (blockNumber != 0xFFFF) {
                     printf("%d ", blockNumber);
@@ -195,7 +195,6 @@ void Directorio(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos) {
         }
     }
 }
-
 
 int Renombrar(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos, char *nombreantiguo, char *nombrenuevo) {
     // this is to rename the file in the directory
@@ -215,14 +214,23 @@ int Imprimir(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos, EXT_DATOS *mem
     if (index != -1) {
         int inodeNumber = directorio[index].dir_inodo;
         for (int i = 0; i < MAX_NUMS_BLOQUE_INODO; ++i) {
-            int blockNumber = inodos->blq_relleno[i];
-            printf("%s", memdatos->dato[blockNumber]);
+            int blockNumber = inodos[inodeNumber].blq_relleno[i];
+
+            // Check if the block number is valid (not 0xFFFF)
+            if (blockNumber != 0xFFFF) {
+                // Print the content of the block
+                printf("Block Number: %d\n", blockNumber);
+                for (int j = 0; j < SIZE_BLOQUE; ++j) {
+                    printf("%c", memdatos->dato[blockNumber * SIZE_BLOQUE + j]);
+                }
+                printf("\n");
+            }
         }
 
-        return 0; // This is that success
+        return 0; // Success
     }
 
-    return -1; // File not found
+    return -1; // File not found
 }
 
 
@@ -321,7 +329,7 @@ int Copiar(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos, EXT_BYTE_MAPS *e
 
 void LeeSuperBloque(EXT_SIMPLE_SUPERBLOCK *psup, FILE *file) {
     // Read the superblock from the file
-    fseek(fent, 0, SEEK_SET);
+    fseek(file, 0, SEEK_SET);
     fread(psup, SIZE_BLOQUE, 1, file);
 
      // Check if the superblock is read successfully
