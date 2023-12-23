@@ -363,3 +363,4 @@ void GrabarDatos(EXT_DATOS *memdatos, FILE *fich){
     fseek(fich, SIZE_BLOQUE * 4, SEEK_SET);
     fwrite(memdatos, SIZE_BLOQUE, MAX_BLOQUES_DATOS, fich);
 }
+// repushing it 
