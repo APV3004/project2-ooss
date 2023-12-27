@@ -87,10 +87,10 @@ int main() {
             }
         }
         else if (strcmp(orden, "imprimir") == 0) {
-            if (Imprimir(&directorio, &ext_blq_inodos, &memdatos, argumento1) == -1) {
-                printf("Error: Unable to print. File not found.\n");
-            }
+            Imprimir(directorio, &ext_blq_inodos, memdatos, argumento1);
+            continue;
         }
+
         else if (strcmp(orden, "remove") == 0) {
             if (Borrar(&directorio, &ext_blq_inodos, &ext_bytemaps, &ext_superblock, argumento1, fent) == -1) {
                 printf("Error: Unable to remove. File not found.\n");
@@ -100,19 +100,8 @@ int main() {
             }
         }
         else if (strcmp(orden, "copy") == 0) {
-            int result = Copiar(directorio, &ext_blq_inodos, &ext_bytemaps, &ext_superblock, &memdatos, argumento1, argumento2, fent);
-            if (result == -1) {
-                printf("Error: Unable to copy. No free inodes available.\n");
-            }
-            else if (result == -2) {
-                printf("Error: Unable to copy. No free blocks available.\n");
-            }
-            else if (result == -3) {
-                printf("Error: Unable to copy. Source file not found or destination file already exists.\n");
-            }
-            else {
-                grabardatos = 1; // Set the flag to write data after metadata updates
-            }
+            Copiar(directorio, &ext_blq_inodos, &ext_bytemaps, &ext_superblock, memdatos, argumento1, argumento2, fent);
+            continue;
         }
         else if (strcmp(orden, "exit") == 0) {
             printf("Exiting the program.\n");
@@ -207,31 +196,29 @@ int Renombrar(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos, char *nombrea
     return -1; // if it´s not found
 }
 
-int Imprimir(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos, EXT_DATOS *memdatos, char *nombre) {
-    // Print the contents of a file
-    int index = BuscaFich(directorio, inodos, nombre);
 
-    if (index != -1) {
-        int inodeNumber = directorio[index].dir_inodo;
-        for (int i = 0; i < MAX_NUMS_BLOQUE_INODO; ++i) {
-            int blockNumber = inodos[inodeNumber].blq_relleno[i];
 
-            // Check if the block number is valid (not 0xFFFF)
-            if (blockNumber != 0xFFFF) {
-                // Print the content of the block
-                printf("Block Number: %d\n", blockNumber);
-                for (int j = 0; j < SIZE_BLOQUE; ++j) {
-                    printf("%c", memdatos->dato[blockNumber * SIZE_BLOQUE + j]);
+int Imprimir(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos, EXT_DATOS *memData, char *nombre) {
+        int indexFile = BuscaFich(directorio, inodos, nombre);
+        int count = 0;
+        
+        if (indexFile != -1) {
+            int inodeIndex = directorio[indexFile].dir_inodo;
+            for(int i = 0; i < MAX_NUMS_BLOQUE_INODO && inodos->blq_inodos[inodeIndex].i_nbloque[i] != NULL_BLOQUE; i++) {
+                int blockIndex = ((inodos->blq_inodos[inodeIndex].i_nbloque[i]) -4);
+
+                for (int j = 0; j < SIZE_BLOQUE && count < inodos->blq_inodos[inodeIndex].size_fichero != '\0'; j++) {
+                    count++;
+                    printf("%c", memData[blockIndex].dato[j]); 
                 }
-                printf("\n");
-            }
-        }
+            } 
 
-        return 0; // Success
-    }
-
-    return -1; // File not found
-}
+            printf("\n");
+        } else {
+            printf("ERROR: file %s is not found.\n", nombre);
+            return -1;
+        } 
+    } 
 
 
 int Borrar(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos, EXT_BYTE_MAPS *ext_bytemaps, EXT_SIMPLE_SUPERBLOCK *ext_superblock, char *nombre, FILE *fich) {
@@ -268,66 +255,74 @@ int Borrar(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos, EXT_BYTE_MAPS *e
 }
 
 
-int Copiar(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos, EXT_BYTE_MAPS *ext_bytemaps, EXT_SIMPLE_SUPERBLOCK *ext_superblock, EXT_DATOS *memdatos, char *nombreorigen, char *nombredestino,  FILE *fich) {
-    int freeInode = -1;
-    // Check if the source file exists
-    int indexOrigen = BuscaFich(directorio, inodos, nombreorigen);
-    if (indexOrigen == -1) {
-        return -1; // Source file not found
-    }
+int Copiar(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos, EXT_BYTE_MAPS *ext_bytemaps, EXT_SIMPLE_SUPERBLOCK *ext_superblock, EXT_DATOS *memData, char *nombreorigen, char *nombredestino, FILE *fich) {
 
-    // Check if the destination file exists
-    int indexDestino = BuscaFich(directorio, inodos, nombredestino);
-    if (indexDestino != -1) {
-        return -2; // Destination file already exists
-    }
+        int indexOrigen = BuscaFich(directorio, inodos, nombreorigen);
+        int indexDestino = BuscaFich(directorio, inodos, nombredestino);
 
-    // Open the source file for reading
-    FILE *sourceFile = fopen(nombreorigen, "rb");
-    if (sourceFile == NULL) {
-        return -3; // Unable to open the source file
-    }
-
-    // Open the destination file for writing
-    FILE *destFile = fopen(nombredestino, "wb");
-    if (destFile == NULL) {
-        fclose(sourceFile);
-        return -4; // Unable to create the destination file
-    }
-
-    // Copy the file data using a buffer
-    char buffer[1024];
-    size_t bytesRead;
-    while ((bytesRead = fread(buffer, 1, sizeof(buffer), sourceFile)) > 0) {
-        fwrite(buffer, 1, bytesRead, destFile);
-    }
-
-    // Close the files
-    fclose(sourceFile);
-    fclose(destFile);
-
-   int freeDirEntry = -1;
-    for (int i = 0; i < MAX_FICHEROS; ++i) {
-        if (directorio[i].dir_inodo == 0) {
-            freeDirEntry = i;
-            break;
+        if (indexOrigen == -1) { // If source file not found
+            printf("ERROR: source file %s not found...\n", nombreorigen);
+            return -1;
         }
-    }
-    if (freeDirEntry != -1) {
-        strcpy(directorio[freeDirEntry].dir_nfich, nombredestino);
-        directorio[freeDirEntry].dir_inodo = freeInode;
-    } else {
-        // No free directory entry available
-        return -4;
-    }
 
-    // Write the changes to the disk
-    GrabarSuperBloque(ext_superblock, fich);
-    GrabarByteMaps(ext_bytemaps, fich);
-    Grabarinodosydirectorio(directorio, inodos, fich);
+        if (indexDestino != -1) { // If destination file found
+            printf("ERROR: destination file %s already exists...\n", nombredestino);
+            return -1;
+        }
 
-    return 0; // Success
+        int freeInodeIndex; // Free the position to store the data that has been copied
+        for (freeInodeIndex = 0; freeInodeIndex < MAX_INODOS; freeInodeIndex++) {
+            if (ext_bytemaps->bmap_inodos[freeInodeIndex] == 0) {
+                ext_bytemaps->bmap_inodos[freeInodeIndex] = 1; 
+                break;
+            }
+        }
+
+        if (freeInodeIndex == MAX_INODOS) { // If no free space 
+            printf("ERROR: no free inode available...\n");
+            return -1;
+        }
+
+        int destInodeIndex = freeInodeIndex;
+        strcpy(directorio[freeInodeIndex].dir_nfich, nombredestino); // Destination file name application
+        directorio[freeInodeIndex].dir_inodo = destInodeIndex; // Destination inode location application
+        inodos->blq_inodos[destInodeIndex].size_fichero = inodos->blq_inodos[directorio[indexOrigen].dir_inodo].size_fichero; // Size of the destiny file is the same as the size of the source file
+
+        int inodeIndex = directorio[indexOrigen].dir_inodo;
+
+        for(int i = 0; i < MAX_NUMS_BLOQUE_INODO; i++) { // Repeats 7 times
+            if (inodos->blq_inodos[inodeIndex].i_nbloque[i] != NULL_BLOQUE) { // If the current inode is not null
+                int sourceBlockIndex = inodos->blq_inodos[inodeIndex].i_nbloque[i] - PRIM_BLOQUE_DATOS;
+                int destBlockIndex = -1;
+
+                for(int j = 0; j < MAX_BLOQUES_DATOS; j++) { // Finds a free block in the block allocation map
+                    if (ext_bytemaps->bmap_bloques[j] == 0) {
+                        ext_bytemaps->bmap_bloques[j] = 1;
+                        destBlockIndex = j;
+                        break;
+                    } // end if condition
+                } // end for loop
+
+                if(destBlockIndex == -1) { // If there are no free blocks available
+                    printf("ERROR: No free block available. Cannot copy the file.\n");
+                    ext_bytemaps->bmap_inodos[destInodeIndex] = 0;
+                    memset(&directorio[freeInodeIndex], 0, sizeof(EXT_ENTRADA_DIR));
+                    return -1;
+                } // end if condition
+
+                inodos->blq_inodos[destInodeIndex].i_nbloque[i] = destBlockIndex + PRIM_BLOQUE_DATOS; // Updates the destination block to the actual block number
+
+                // Perform the actual data copy
+                memcpy(memData[destBlockIndex].dato, memData[sourceBlockIndex].dato, SIZE_BLOQUE);
+            } // end if condition
+        } // end for loop
+
+        printf("File %s successfully copied to %s!\n", nombreorigen, nombredestino);
+    
+        return 0;
 }
+
+  
 
 
 
