@@ -167,14 +167,16 @@ void Directorio(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos) {
     printf("Directory listing:\n");
     printf("%-20s %-10s %-10s %-10s\n", "File Name", "Inode", "Size", "Blocks");
 
-    for (int i = 0; i < MAX_FICHEROS; ++i) {
+    for (int i = 1; i < MAX_FICHEROS; ++i) {
         if (directorio[i].dir_nfich[0] != '\0' && directorio[i].dir_inodo != 0xFFFF) {
             int inodeNumber = directorio[i].dir_inodo;
-            printf("%-20s %-10d %-10u ", directorio[i].dir_nfich, inodeNumber, inodos[inodeNumber].blq_inodos);
+            
+            // Accessing the size of the file. Replace 'size' with the actual field name in your inode structure.
+            printf("%-20s %-10d %-10u ", directorio[i].dir_nfich, inodeNumber, inodos->blq_inodos[inodeNumber].size_fichero);
 
-            printf("Blocks: ");
             for (int j = 0; j < MAX_NUMS_BLOQUE_INODO; j++) {
-                int blockNumber = inodos[inodeNumber].blq_relleno[j];
+                // Accessing the block numbers. Replace 'blocks' with the actual field name for block numbers in your inode structure.
+                int blockNumber = inodos->blq_inodos[inodeNumber].i_nbloque[j];
                 if (blockNumber != 0xFFFF) {
                     printf("%d ", blockNumber);
                 }
