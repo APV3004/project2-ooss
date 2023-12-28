@@ -87,10 +87,10 @@ int main() {
             }
         }
         else if (strcmp(orden, "imprimir") == 0) {
-            if (Imprimir(&directorio, &ext_blq_inodos, &memdatos, argumento1) == -1) {
-                printf("Error: Unable to print. File not found.\n");
-            }
+            Imprimir(directorio, &ext_blq_inodos, memdatos, argumento1);
+            continue;
         }
+
         else if (strcmp(orden, "remove") == 0) {
             if (Borrar(&directorio, &ext_blq_inodos, &ext_bytemaps, &ext_superblock, argumento1, fent) == -1) {
                 printf("Error: Unable to remove. File not found.\n");
@@ -100,19 +100,8 @@ int main() {
             }
         }
         else if (strcmp(orden, "copy") == 0) {
-            int result = Copiar(&directorio, &ext_blq_inodos, &ext_bytemaps, &ext_superblock, &memdatos, argumento1, argumento2, fent);
-            if (result == -1) {
-                printf("Error: Unable to copy. No free inodes available.\n");
-            }
-            else if (result == -2) {
-                printf("Error: Unable to copy. No free blocks available.\n");
-            }
-            else if (result == -3) {
-                printf("Error: Unable to copy. Source file not found or destination file already exists.\n");
-            }
-            else {
-                grabardatos = 1; // Set the flag to write data after metadata updates
-            }
+            Copiar(directorio, &ext_blq_inodos, &ext_bytemaps, &ext_superblock, memdatos, argumento1, argumento2, fent);
+            continue;
         }
         else if (strcmp(orden, "exit") == 0) {
             printf("Exiting the program.\n");
@@ -184,7 +173,7 @@ void Directorio(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos) {
             printf("%-20s %-10d %-10u ", directorio[i].dir_nfich, inodeNumber, inodos[inodeNumber].blq_inodos);
 
             printf("Blocks: ");
-            for (int j = 0; j < MAX_NUMS_BLOQUE_INODO; ++j) {
+            for (int j = 0; j < MAX_NUMS_BLOQUE_INODO; j++) {
                 int blockNumber = inodos[inodeNumber].blq_relleno[j];
                 if (blockNumber != 0xFFFF) {
                     printf("%d ", blockNumber);
@@ -195,7 +184,6 @@ void Directorio(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos) {
         }
     }
 }
-
 
 int Renombrar(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos, char *nombreantiguo, char *nombrenuevo) {
     // this is to rename the file in the directory
@@ -208,22 +196,29 @@ int Renombrar(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos, char *nombrea
     return -1; // if it´s not found
 }
 
-int Imprimir(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos, EXT_DATOS *memdatos, char *nombre) {
-    // Print the contents of a file
-    int index = BuscaFich(directorio, inodos, nombre);
 
-    if (index != -1) {
-        int inodeNumber = directorio[index].dir_inodo;
-        for (int i = 0; i < MAX_NUMS_BLOQUE_INODO; ++i) {
-            int blockNumber = inodos->blq_relleno[i];
-            printf("%s", memdatos->dato[blockNumber]);
-        }
 
-        return 0; // This is that success
-    }
+int Imprimir(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos, EXT_DATOS *memData, char *nombre) {
+        int indexFile = BuscaFich(directorio, inodos, nombre);
+        int count = 0;
+        
+        if (indexFile != -1) {
+            int inodeIndex = directorio[indexFile].dir_inodo;
+            for(int i = 0; i < MAX_NUMS_BLOQUE_INODO && inodos->blq_inodos[inodeIndex].i_nbloque[i] != NULL_BLOQUE; i++) {
+                int blockIndex = ((inodos->blq_inodos[inodeIndex].i_nbloque[i]) -4);
 
-    return -1; // File not found
-}
+                for (int j = 0; j < SIZE_BLOQUE && count < inodos->blq_inodos[inodeIndex].size_fichero != '\0'; j++) {
+                    count++;
+                    printf("%c", memData[blockIndex].dato[j]); 
+                }
+            } 
+
+            printf("\n");
+        } else {
+            printf("ERROR: file %s is not found.\n", nombre);
+            return -1;
+        } 
+    } 
 
 
 int Borrar(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos, EXT_BYTE_MAPS *ext_bytemaps, EXT_SIMPLE_SUPERBLOCK *ext_superblock, char *nombre, FILE *fich) {
@@ -308,14 +303,14 @@ int Copiar(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos, EXT_BYTE_MAPS *e
                     }
                 }
 
-                if(destBlockIndex == -1) { // If no free blocks available
+                if(destBlockIndex == -1) { 
                     printf("ERROR: no free block available...\n");
                     ext_bytemaps->bmap_inodos[destInodeIndex] = 0;
                     memset(&directorio[freeInodeIndex], 0, sizeof(EXT_ENTRADA_DIR));
                     return -1;
                 }
 
-                // Updates destination block to block number
+                
                 inodos->blq_inodos[destInodeIndex].i_nbloque[i] = destBlockIndex + PRIM_BLOQUE_DATOS; 
 
                 // Perform data copy
@@ -329,9 +324,14 @@ int Copiar(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos, EXT_BYTE_MAPS *e
          return 0;
 }
 
+  
+
+
+
+
 void LeeSuperBloque(EXT_SIMPLE_SUPERBLOCK *psup, FILE *file) {
     // Read the superblock from the file
-    fseek(fent, 0, SEEK_SET);
+    fseek(file, 0, SEEK_SET);
     fread(psup, SIZE_BLOQUE, 1, file);
 
      // Check if the superblock is read successfully
