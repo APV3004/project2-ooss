@@ -260,63 +260,73 @@ int Borrar(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos, EXT_BYTE_MAPS *e
 }
 
 
-int Copiar(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos, EXT_BYTE_MAPS *ext_bytemaps, EXT_SIMPLE_SUPERBLOCK *ext_superblock, EXT_DATOS *memdatos, char *nombreorigen, char *nombredestino, FILE *fich) {
-    int indexOrigen = BuscaFich(directorio, inodos, nombreorigen);
-    int indexDestino = BuscaFich(directorio, inodos, nombredestino);
+int Copiar(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos, EXT_BYTE_MAPS *ext_bytemaps, EXT_SIMPLE_SUPERBLOCK *ext_superblock, EXT_DATOS *memData, char *nombreorigen, char *nombredestino, FILE *fich) {
 
-    if (indexOrigen != -1 && indexDestino == -1) {
-        // Find the first free inode for the file
-        int freeInode = -1;
-        for (int i = 2; i < MAX_INODOS; ++i) {
-            if (ext_bytemaps->bmap_inodos[i] == 0) {
-                freeInode = i;
+        int indexOrigen = BuscaFich(directorio, inodos, nombreorigen);
+        int indexDestino = BuscaFich(directorio, inodos, nombredestino);
+
+        if (indexOrigen == -1) { // source file not found
+            printf("ERROR: source file %s not found...\n", nombreorigen);
+            return -1;
+        }
+
+        if (indexDestino != -1) { // destination file found
+            printf("ERROR: destination file %s already exists...\n", nombredestino);
+            return -1;
+        }
+
+        int freeInodeIndex; // this is to be the free position to store the data 
+        for (freeInodeIndex = 0; freeInodeIndex < MAX_INODOS; freeInodeIndex++) {
+            if (ext_bytemaps->bmap_inodos[freeInodeIndex] == 0) {
+                ext_bytemaps->bmap_inodos[freeInodeIndex] = 1; 
                 break;
             }
         }
 
-        if (freeInode != -1) {
-            // Copy the size and mark the inode as busy
-            int inodeNumberOrigen = directorio[indexOrigen].dir_inodo;
-            int inodeNumberDestino = freeInode;
-            memcpy(inodos[inodeNumberDestino].blq_relleno, inodos[inodeNumberOrigen].blq_relleno, sizeof(inodos[inodeNumberOrigen].blq_relleno));
-            ext_bytemaps->bmap_inodos[inodeNumberDestino] = 1;
-
-            // Allocate and copy the data blocks
-            for (int i = 0; i < MAX_NUMS_BLOQUE_INODO; ++i) {
-                int blockNumber = inodos[inodeNumberOrigen].blq_relleno[i];
-                if (blockNumber != 0xFFFF) {
-                    // Find a free block
-                    int freeBlock = -1;
-                    for (int j = 0; j < MAX_BLOQUES_PARTICION; ++j) {
-                        if (ext_bytemaps->bmap_bloques[j] == 0) {
-                            freeBlock = j;
-                            break;
-                        }
-                    }
-                    if (freeBlock == -1) {
-                        // No free blocks available
-                        return -2;
-                    }
-                    // Copy the block data
-                    memcpy(&memdatos[freeBlock], &memdatos[blockNumber], SIZE_BLOQUE);
-                    inodos[inodeNumberDestino].blq_relleno[i] = freeBlock;
-                    ext_bytemaps->bmap_bloques[freeBlock] = 1;
-                }
-            }
-
-            // Create the new directory entry
-            strcpy(directorio[freeInode].dir_nfich, nombredestino);
-            directorio[freeInode].dir_inodo = inodeNumberDestino;
-
-            return 0; // Success
-        } else {
-            // No free inodes available
+        if (freeInodeIndex == MAX_INODOS) { // If no free space 
+            printf("ERROR: no free inode available...\n");
             return -1;
         }
-    } else {
-        // Source file not found or destination file already exists
-        return -3;
-    }
+
+        int destInodeIndex = freeInodeIndex;
+        strcpy(directorio[freeInodeIndex].dir_nfich, nombredestino); 
+        directorio[freeInodeIndex].dir_inodo = destInodeIndex;
+        inodos->blq_inodos[destInodeIndex].size_fichero = inodos->blq_inodos[directorio[indexOrigen].dir_inodo].size_fichero;
+
+        int inodeIndex = directorio[indexOrigen].dir_inodo;
+
+        for(int i = 0; i < MAX_NUMS_BLOQUE_INODO; i++) { // Repeated 7 times
+            if (inodos->blq_inodos[inodeIndex].i_nbloque[i] != NULL_BLOQUE) { // If current inode not null
+                int sourceBlockIndex = inodos->blq_inodos[inodeIndex].i_nbloque[i] - PRIM_BLOQUE_DATOS;
+                int destBlockIndex = -1;
+
+                for(int j = 0; j < MAX_BLOQUES_DATOS; j++) { // Finds a free block
+                    if (ext_bytemaps->bmap_bloques[j] == 0) {
+                        ext_bytemaps->bmap_bloques[j] = 1;
+                        destBlockIndex = j;
+                        break;
+                    }
+                }
+
+                if(destBlockIndex == -1) { // If no free blocks available
+                    printf("ERROR: no free block available...\n");
+                    ext_bytemaps->bmap_inodos[destInodeIndex] = 0;
+                    memset(&directorio[freeInodeIndex], 0, sizeof(EXT_ENTRADA_DIR));
+                    return -1;
+                }
+
+                // Updates destination block to block number
+                inodos->blq_inodos[destInodeIndex].i_nbloque[i] = destBlockIndex + PRIM_BLOQUE_DATOS; 
+
+                // Perform data copy
+                memcpy(memData[destBlockIndex].dato, memData[sourceBlockIndex].dato, SIZE_BLOQUE);
+
+            }
+        }
+
+        printf("File %s copied to %s\n", nombreorigen, nombredestino);
+    
+         return 0;
 }
 
 void LeeSuperBloque(EXT_SIMPLE_SUPERBLOCK *psup, FILE *file) {
