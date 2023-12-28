@@ -86,7 +86,7 @@ int main() {
                 printf("Error: Unable to rename. File not found.\n");
             }
         }
-        else if (strcmp(orden, "imprimir") == 0) {
+        else if (strcmp(orden, "print") == 0) {
             Imprimir(directorio, &ext_blq_inodos, memdatos, argumento1);
             continue;
         }
