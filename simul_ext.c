@@ -77,14 +77,17 @@ int main() {
         if (strcmp(orden, "info") == 0) {
             // Command: info
             LeeSuperBloque(&ext_superblock, fent);
+            continue;
         }
         else if (strcmp(orden, "bytemaps") == 0) {
             Printbytemaps(&ext_bytemaps);
+            continue;
         }
         else if (strcmp(orden, "rename") == 0) {
             if (Renombrar(&directorio, &ext_blq_inodos, argumento1, argumento2) == -1) {
                 printf("Error: Unable to rename. File not found.\n");
             }
+            continue;
         }
         else if (strcmp(orden, "print") == 0) {
             Imprimir(directorio, &ext_blq_inodos, memdatos, argumento1);
@@ -98,6 +101,7 @@ int main() {
             else {
                 grabardatos = 1; // Set the flag to write data after metadata updates
             }
+            continue;
         }
         else if (strcmp(orden, "copy") == 0) {
             Copiar(directorio, &ext_blq_inodos, &ext_bytemaps, &ext_superblock, memdatos, argumento1, argumento2, fent);
